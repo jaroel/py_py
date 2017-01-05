@@ -1,4 +1,8 @@
 import os
+import importable_modules
+
+_marker = []
+
 DEBUG = int(os.environ.get('DEBUG', 0))
 
 # byte codes
@@ -8,6 +12,7 @@ LOAD_CONST = 100
 CALL_FUNCTION = 131
 RETURN_VALUE = 83
 STORE_NAME = 90
+IMPORT_NAME = 108
 
 
 # handlers
@@ -42,7 +47,7 @@ def handle_CALL_FUNCTION(co_codes, co_obj, stack, scope):
     co_codes.pop()  # something with kwargs?
 
     args = [stack.pop() for _ in range(amount_args)]
-    kwargs = {} # ignore kwargs for now
+    kwargs = {}  # ignore kwargs for now
 
     func = stack.pop()
 
@@ -64,6 +69,19 @@ def handle_RETURN_VALUE(co_codes, co_obj, stack, scope):
     return value
 
 
+def handle_IMPORT_NAME(co_codes, co_obj, stack, scope):
+    co_codes.pop()  # ?
+    co_codes.pop()  # ?
+    stack.pop()  # None return val
+
+    name = co_obj.co_names[0]
+    module = getattr(importable_modules, name, _marker)
+    if module is _marker:
+        raise ImportError('cannot import ' + name + ' from importable_modules')
+
+    stack.append(module)
+
+
 handlers = {
     LOAD_NAME: handle_LOAD_NAME,
     STORE_NAME: handle_STORE_NAME,
@@ -71,6 +89,7 @@ handlers = {
     CALL_FUNCTION: handle_CALL_FUNCTION,
     POP_TOP: handle_POP_TOP,
     RETURN_VALUE: handle_RETURN_VALUE,
+    IMPORT_NAME: handle_IMPORT_NAME,
 }
 
 
@@ -94,6 +113,7 @@ def my_exec(co_obj, my_globals, my_locals):
     scope = Scope(my_globals, my_locals)
 
     while co_codes:
+        DEBUG == 2 and print("co_codes: \n", co_codes)
         b_code = co_codes.pop()
         handler = handlers[b_code]
         return_val = handler(co_codes, co_obj, stack, scope)
