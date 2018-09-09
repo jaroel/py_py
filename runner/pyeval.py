@@ -1,9 +1,10 @@
 import os
+
 import importable_modules
 
-_marker = []
+_marker = object()
 
-DEBUG = int(os.environ.get('DEBUG', 0))
+DEBUG = int(os.environ.get("DEBUG", 0))
 
 # byte codes
 POP_TOP = 1
@@ -18,25 +19,22 @@ IMPORT_NAME = 108
 # handlers
 def handle_LOAD_NAME(co_codes, co_obj, stack, scope):
     position = co_codes.pop()
-    co_codes.pop()
     name = co_obj.co_names[position]
     value = scope[name]
-    DEBUG and print('LOAD_NAME', value)
+    DEBUG and print("LOAD_NAME", value)
     stack.append(value)
 
 
 def handle_STORE_NAME(co_codes, co_obj, stack, scope):
     position = co_codes.pop()
-    co_codes.pop()
     name = co_obj.co_names[position]
     value = stack.pop()
-    DEBUG and print('STORE_NAME', name, value)
+    DEBUG and print("STORE_NAME", name, value)
     scope.locals[name] = value
 
 
 def handle_LOAD_CONST(co_codes, co_obj, stack, scope):
     position = co_codes.pop()
-    co_codes.pop()
     value = co_obj.co_consts[position]
     DEBUG and print("LOAD_CONST", value)
     stack.append(value)
@@ -44,7 +42,7 @@ def handle_LOAD_CONST(co_codes, co_obj, stack, scope):
 
 def handle_CALL_FUNCTION(co_codes, co_obj, stack, scope):
     amount_args = co_codes.pop()
-    co_codes.pop()  # something with kwargs?
+    # co_codes.pop()
 
     args = [stack.pop() for _ in range(amount_args)]
     kwargs = {}  # ignore kwargs for now
@@ -60,24 +58,29 @@ def handle_CALL_FUNCTION(co_codes, co_obj, stack, scope):
 
 
 def handle_POP_TOP(co_codes, co_obj, stack, scope):
+    co_codes.pop()
+    DEBUG and print("POP_TOP")
     stack.pop()
 
 
 def handle_RETURN_VALUE(co_codes, co_obj, stack, scope):
+    co_codes.pop()
     value = stack.pop()
     DEBUG and print("RETURN_VALUE", value)
     return value
 
 
 def handle_IMPORT_NAME(co_codes, co_obj, stack, scope):
-    co_codes.pop()  # ?
-    co_codes.pop()  # ?
-    stack.pop()  # None return val
+    stack.pop()  # 0
+    stack.pop()  # None
 
-    name = co_obj.co_names[0]
+    position = co_codes.pop()
+    name = co_obj.co_names[position]
     module = getattr(importable_modules, name, _marker)
     if module is _marker:
-        raise ImportError('cannot import ' + name + ' from importable_modules')
+        raise ImportError(
+            f"cannot import {name} from importable_modules ({importable_modules})"
+        )
 
     stack.append(module)
 
